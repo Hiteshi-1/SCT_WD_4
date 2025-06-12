@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>To-Do List Upgrade</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f9f7ff;
+      margin: 0;
+      padding: 0;
+    }
+    .header {
+      background-color: #5c4d7d;
+      color: white;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .quote {
+      font-style: italic;
+      margin-top: 0.5rem;
+      font-size: 1.1rem;
+    }
+    .main {
+      display: flex;
+      gap: 2rem;
+      max-width: 1200px;
+      margin: auto;
+      padding: 2rem;
+      align-items: flex-start;
+    }
+    .left-panel {
+      flex: 2;
+      position: relative;
+    }
+    .add-task {
+      background-color: #f0eaff;
+      padding: 1rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      width: 250px;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .add-task input, .add-task button {
+      padding: 0.5rem;
+      font-size: 0.9rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .add-task button {
+      background-color: #5c4d7d;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .task-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 10rem;
+    }
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background-color: #eee;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease-in-out;
+    }
+    .task-item:hover {
+      transform: scale(1.02);
+    }
+    .task-item.completed span {
+      text-decoration: line-through;
+      color: gray;
+    }
+    .task-actions {
+      display: flex;
+      gap: 0.3rem;
+      margin-left: 1rem;
+    }
+    .task-item button {
+      background: none;
+      color: #5c4d7d;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+    }
+    .sidebar {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      width: 250px;
+      background-color: #ddd3f8;
+      padding: 1rem;
+      overflow-y: auto;
+      border-top-left-radius: 12px;
+    }
+    .sidebar h3 {
+      margin-top: 0;
+    }
+    .sidebar ul {
+      padding-left: 1rem;
+    }
+    .hidden {
+      display: none;
+    }
+    @media (max-width: 768px) {
+      .main {
+        flex-direction: column;
+      }
+      .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        margin-top: 2rem;
+        border-radius: 0;
+      }
+      .add-task {
+        position: static;
+        width: 100%;
+      }
+      .task-list {
+        margin-top: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Welcome to Your To-Do List App</h1>
+    <p class="quote">The secret of getting ahead is getting started.</p>
+  </div>
+
+  <div class="main">
+    <div class="left-panel">
+      <div class="add-task">
+        <input type="text" id="taskInput" placeholder="Add a new task...">
+        <input type="datetime-local" id="taskDate">
+        <button onclick="addTask()">Add</button>
+      </div>
+      <ul class="task-list" id="taskList"></ul>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div id="summaryContainer">
+      <h3>Your Task Summary</h3>
+      <ul id="summaryList"></ul>
+    </div>
+  </div>
+
+  <script>
+    let tasks = [];
+
+    function saveTasks() {
+      localStorage.setItem('tasks', JSON.stringify(tasks));
+    }
+
+    function loadTasks() {
+      const saved = localStorage.getItem('tasks');
+      if (saved) tasks = JSON.parse(saved);
+    }
+
+    function addTask() {
+      const taskText = document.getElementById('taskInput').value.trim();
+      const taskDate = document.getElementById('taskDate').value;
+
+      if (taskText === '') {
+        alert("Oopsie! Task can't be empty, boo 💖");
+        return;
+      }
+
+      if (taskDate && new Date(taskDate) < new Date()) {
+        alert("Whoa slow down time traveler ⏳ You can't add tasks in the past!");
+        return;
+      }
+
+      const task = {
+        id: Date.now(),
+        text: taskText,
+        date: taskDate,
+        completed: false
+      };
+
+      tasks.push(task);
+      saveTasks();
+      document.getElementById('taskInput').value = '';
+      document.getElementById('taskDate').value = '';
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const taskList = document.getElementById('taskList');
+      const summaryList = document.getElementById('summaryList');
+      taskList.innerHTML = '';
+      summaryList.innerHTML = '';
+
+      const now = new Date();
+
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = `task-item ${task.completed ? 'completed' : ''}`;
+
+        const taskContent = document.createElement('span');
+        taskContent.ondblclick = () => startEdit(task.id);
+
+        let dueDateStr = '';
+        if (task.date) {
+          const taskDateObj = new Date(task.date);
+          const isOverdue = !task.completed && taskDateObj < now;
+          const formattedDate = taskDateObj.toLocaleString();
+          dueDateStr = ` (${formattedDate})` + (isOverdue ? ' ⏰' : '');
+          if (isOverdue) li.style.backgroundColor = '#ffcccc';
+        }
+
+        taskContent.textContent = task.text + dueDateStr;
+
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'task-actions';
+        actionDiv.innerHTML = `
+          <button onclick="toggleComplete(${task.id})">✔️</button>
+          <button onclick="startEdit(${task.id})">✏️</button>
+          <button onclick="deleteTask(${task.id})">🗑️</button>
+        `;
+
+        li.appendChild(taskContent);
+        li.appendChild(actionDiv);
+        taskList.appendChild(li);
+      });
+
+      summaryList.innerHTML = `
+        <li>Total: ${tasks.length}</li>
+        <li>Completed: ${tasks.filter(t => t.completed).length}</li>
+        <li>Pending: ${tasks.filter(t => !t.completed).length}</li>
+      `;
+    }
+
+    function startEdit(id) {
+      const task = tasks.find(t => t.id === id);
+      const newText = prompt("Edit task text:", task?.text);
+      const newDate = prompt("Edit task date (yyyy-mm-ddThh:mm):", task?.date);
+
+      if (newText === null && newDate === null) return;
+
+      if (newDate && new Date(newDate) < new Date()) {
+        alert("Oops! You can't update the task to a past date.");
+        return;
+      }
+
+      tasks = tasks.map(task =>
+        task.id === id ? {
+          ...task,
+          text: newText !== null ? newText : task.text,
+          date: newDate !== null ? newDate : task.date
+        } : task
+      );
+
+      saveTasks();
+      renderTasks();
+    }
+
+    function toggleComplete(id) {
+      tasks = tasks.map(task => task.id === id ? { ...task, completed: !task.completed } : task);
+      saveTasks();
+      renderTasks();
+    }
+
+    function deleteTask(id) {
+      if (!confirm("Are you suuure you want to delete this precious task? 😢")) return;
+      tasks = tasks.filter(task => task.id !== id);
+      saveTasks();
+      renderTasks();
+    }
+
+    window.onload = () => {
+      loadTasks();
+      renderTasks();
+    };
+  </script>
+</body>
+</html>
